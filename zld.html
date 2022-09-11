@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>	<head>
+	<meta charset="UTF-8" />
+	<title>學生雲端學習・資源提取</title>
+	<script defer type="module">
+		import { dvd_api } from "./zhengLong_3rdParty_api_dvd.js";
+		
+		const qrys = (qry)=>document.querySelectorAll(qry);
+		const qry = (qry)=>document.querySelector(qry);
+
+		let	errorHolder = qry("div#errorHolder"),
+
+			userName = qry('input[name="userName"]'),
+			passWord = qry('input[name="passWord"]'),
+			cramCode = qry('input[name="cramCode"]'),
+			getClassroomList = qry("button#getClassroomList"),
+
+			classroomCode = qry('select[name="classroomCode"]'),
+			getLessonList = qry("button#getLessonList"),
+
+			lessonCode = qry('select[name="lessonCode"]'),
+			getLesson = qry("button#getLesson"),
+
+			lessonBlock = qry("ol#lessonBlock");
+
+		{
+			getClassroomList.addEventListener("click", async()=>{
+				let query = {
+					cramCode: cramCode.value,
+					userName: userName.value,
+					passWord: passWord.value
+				};
+				let classrooms = await dvd_api.listClassroom(query);
+				if(!classrooms.ok){
+					errorHolder(`ERROR: ${classrooms.msg}`);
+					return;
+				}
+
+				classroomCode.innerHTML = `<option value="">--- 請選擇 ---</option>`;
+				for(let classroom of classrooms.classroomList){
+					let option = document.createElement("option");
+					option.innerHTML
+						= option.value 
+						= JSON.stringify(classroom);
+					classroomCode.appendChild(option);
+				}
+			});
+		}
+		{
+			getLessonList.addEventListener("click", async()=>{
+				let pClassroomCode = JSON.parse(classroomCode.value);
+				let query = {
+					cramCode: cramCode.value,
+					userName: userName.value,
+					passWord: passWord.value,
+
+					classroomCode: pClassroomCode.code,
+					groupCode: pClassroomCode.groupCode
+				}
+				let lessons = (await dvd_api.listClass(query)).classList;
+
+				lessonCode.innerHTML = `<option value="">--- 請選擇 ---</option>`;
+				for(let lesson of lessons){
+					let option = document.createElement("option");
+					option.innerHTML
+						= option.value
+						= JSON.stringify(lesson);
+					lessonCode.appendChild(option);
+				}
+			});
+		}
+		{
+			getLesson.addEventListener("click", async ()=>{
+				let pClassroomCode = JSON.parse(classroomCode.value);
+				let pLessonCode = JSON.parse(lessonCode.value);
+				let query = {
+					cramCode: cramCode.value,
+					userName: userName.value,
+					passWord: passWord.value,
+
+					classroomCode: pClassroomCode.code,
+					groupCode: pClassroomCode.groupCode,
+
+					classCode: pLessonCode.classCode
+				};
+
+				let movieList = (await dvd_api.listMovie(query))
+					.movieList
+					.sort( (l, m) => (l.movieOrder > m.movieOrder) ? 1 : -1 );
+
+				lessonBlock.innerHTML = "";
+				for(let movie of movieList){
+					let link = `http://svr1.eclass.com.tw/LocalUser/L${cramCode.value}/${movie.movieCode}.mp4`;
+					lessonBlock.insertAdjacentHTML("beforeend", `
+						<li>
+							<code>${JSON.stringify(movie)}</code><br />
+							<a href="${link}">${link}</a>
+						</li>
+					`);
+				}
+			});
+		}
+	</script>
+</head>	<body>
+	<h1>學生雲端學習・資源提取</h1>
+	<hr />
+	<div id="errorHolder"></div>
+
+	<div id="loginBlock">
+		userName: <input name="userName" placeholder="使用者名稱"/><br />
+		passWord: <input name="passWord" placeholder="使用者密碼"/><br />
+		cramCode: <input name="cramCode" placeholder="補習班代碼"/><br />
+		<button id="getClassroomList">列出班級列表</button>
+	</div>
+	<hr />
+
+	<div id="classroomBlock">
+		班級列表：<select name="classroomCode">
+			<option value="">--- 請先執行上述查詢 ---</option>
+		</select>
+		<button id="getLessonList">列出課程</button>
+	</div>
+	<hr />
+
+	<div id="classroomBlock">
+		課程列表：<select name="lessonCode">
+			<option value="">--- 請先執行上述查詢 ---</option>
+		</select>
+		<button id="getLesson">列出課程資訊</button>
+	</div>
+	<hr />
+
+	<ol id="lessonBlock">
+	</ol>
+</body>	</html>
